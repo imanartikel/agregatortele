@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+logs/
+files/output/
+files/pending_orders.json
+pending_orders.json
+.claude/

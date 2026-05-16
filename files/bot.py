@@ -19,8 +19,22 @@ logging.basicConfig(
 )
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8794836991:AAHQwLCIUVyN0qm2FEM0_qLETTaCr9goMF8")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
+
+# Load .env manually if exists
+env_path = os.path.join(PROJECT_ROOT, ".env")
+if os.path.exists(env_path):
+    with open(env_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, val = line.split("=", 1)
+                os.environ[key.strip()] = val.strip().strip('"').strip("'")
+
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+if not TOKEN:
+    raise ValueError("ERROR: TELEGRAM_BOT_TOKEN is not set in environment or .env file!")
 TEMPLATE_PATH = os.path.join(BASE_DIR, "template.xlsx")
 OUTPUT_DIR = os.path.join(BASE_DIR, "output")
 DB_PATH = os.path.join(BASE_DIR, "pending_orders.json")
