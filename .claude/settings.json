@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py -c ' *)",
+      "Bash(tasklist)",
+      "Bash(taskkill /PID 10852 /F)",
+      "PowerShell(Stop-Process -Id 10852 -Force)",
+      "Bash(py bot.py)",
+      "PowerShell(Stop-Process -Name python -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(Start-Process -FilePath \"py\" -ArgumentList \"`\"c:/Users/62812/Desktop/agregator telegram/files/bot.py`\"\" -RedirectStandardOutput \"c:/Users/62812/Desktop/agregator telegram/files/bot_log.txt\" -RedirectStandardError \"c:/Users/62812/Desktop/agregator telegram/files/bot_err.txt\" -WindowStyle Hidden)",
+      "PowerShell(Start-Process -FilePath \"py\" -ArgumentList \"`\"c:\\\\Users\\\\62812\\\\Desktop\\\\agregator telegram\\\\files\\\\bot.py`\"\" -WindowStyle Normal; Start-Sleep -Seconds 3; Get-Process | Where-Object {$_.Name -match \"python|py\"} | Select-Object Id, Name)",
+      "PowerShell(Get-Process | Where-Object {$_.Name -match \"python\"} | Stop-Process -Force; Write-Host \"All killed\")"
+    ]
+  }
+}
