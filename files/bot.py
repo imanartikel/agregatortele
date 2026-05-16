@@ -10,8 +10,8 @@ from telegram.ext import (
     CallbackQueryHandler, ContextTypes, filters, ApplicationBuilder
 )
 import shutil
-import xlwings as xw
-import pythoncom
+import openpyxl
+from openpyxl.styles import PatternFill
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -199,9 +199,6 @@ def parse_order(text: str) -> dict | None:
 
 # ─── EXCEL EXPORT ─────────────────────────────────────────────────────────────
 def export_to_excel(orders: list[dict], chat_id: int) -> str:
-    # Inisialisasi COM untuk thread ini (wajib buat xlwings di background thread)
-    pythoncom.CoInitialize()
-    
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         out_path = os.path.join(OUTPUT_DIR, f"orders_{chat_id}_{timestamp}.xlsx")
@@ -209,67 +206,55 @@ def export_to_excel(orders: list[dict], chat_id: int) -> str:
         # Copy template asli
         shutil.copy(TEMPLATE_PATH, out_path)
         
-        logging.info(f"Mulai loading template pake Excel Asli: {out_path}")
+        logging.info(f"Mulai loading template pake openpyxl: {out_path}")
         
-        # Jalankan Excel di background (hidden)
-        app = xw.App(visible=False)
-        try:
-            wb = app.books.open(out_path)
-            ws = wb.sheets["Upload"]
+        wb = openpyxl.load_workbook(out_path)
+        ws = wb["Upload"]
+        
+        start_row = 2
+        
+        # Zebra fill
+        zebra_fill = PatternFill(start_color="F0F4FF", end_color="F0F4FF", fill_type="solid")
+        
+        for i, order in enumerate(orders):
+            row_num = start_row + i
+            row_data = [
+                i + 1,                                          # 1: No
+                "PICKUP",                                       # 2: Jenis Pengiriman
+                order.get("kurir", DEFAULT_KURIR),             # 3: Pilihan Kurir
+                order.get("layanan", DEFAULT_LAYANAN),          # 4: Jenis Layanan
+                PENGIRIM["nama"],                               # 5: Nama Pengirim
+                PENGIRIM["alamat"],                             # 6: Alamat Pengirim
+                PENGIRIM["telp"],                               # 7: No Telp Pengirim
+                PENGIRIM["kecamatan"],                          # 8: Kec Pengirim
+                PENGIRIM["kota"],                               # 9: Kota Pengirim
+                order.get("nama", ""),                          # 10: Nama Penerima
+                order.get("alamat", ""),                        # 11: Alamat Penerima
+                order.get("hp", ""),                            # 12: No Telp Penerima
+                order.get("kecamatan", ""),                     # 13: Kec Penerima
+                order.get("kota", ""),                          # 14: Kota Penerima
+                order.get("berat", ""),                         # 15: Berat (kg)
+                "", "", "",                                     # 16,17,18: P, L, T (kosong)
+                order.get("pesanan", ""),                       # 19: Isi Paket
+                order.get("asuransi", ""),                      # 20: Asuransi
+                order.get("nilai_barang", ""),                  # 21: Harga Barang
+                "",                                             # 22: Nilai COD (kosong)
+                order.get("instruksi", ""),                     # 23: Instruksi
+                order.get("no_ref", "")                         # 24: No Referensi
+            ]
             
-            start_row = 2
-            
-            # Kumpulin semua data dulu biar nulisnya sekali jalan (jauh lebih cepet)
-            excel_data = []
-            for i, order in enumerate(orders):
-                row_data = [
-                    i + 1,                                          # 1: No
-                    "PICKUP",                                       # 2: Jenis Pengiriman
-                    order.get("kurir", DEFAULT_KURIR),             # 3: Pilihan Kurir
-                    order.get("layanan", DEFAULT_LAYANAN),          # 4: Jenis Layanan
-                    PENGIRIM["nama"],                               # 5: Nama Pengirim
-                    PENGIRIM["alamat"],                             # 6: Alamat Pengirim
-                    PENGIRIM["telp"],                               # 7: No Telp Pengirim
-                    PENGIRIM["kecamatan"],                          # 8: Kec Pengirim
-                    PENGIRIM["kota"],                               # 9: Kota Pengirim
-                    order.get("nama", ""),                          # 10: Nama Penerima
-                    order.get("alamat", ""),                        # 11: Alamat Penerima
-                    order.get("hp", ""),                            # 12: No Telp Penerima
-                    order.get("kecamatan", ""),                     # 13: Kec Penerima
-                    order.get("kota", ""),                          # 14: Kota Penerima
-                    order.get("berat", ""),                         # 15: Berat (kg)
-                    "", "", "",                                     # 16,17,18: P, L, T (kosong)
-                    order.get("pesanan", ""),                       # 19: Isi Paket
-                    order.get("asuransi", ""),                      # 20: Asuransi
-                    order.get("nilai_barang", ""),                  # 21: Harga Barang
-                    "",                                             # 22: Nilai COD (kosong)
-                    order.get("instruksi", ""),                     # 23: Instruksi
-                    order.get("no_ref", "")                         # 24: No Referensi
-                ]
-                excel_data.append(row_data)
-            
-            # Tulis SEMUA data sekaligus (ini kuncinya biar ngebut)
-            if excel_data:
-                ws.range(f"A{start_row}").value = excel_data
-            
-            # Tambahin Zebra Coloring (warna selang-seling)
-            for i in range(len(orders)):
+            for col_idx, value in enumerate(row_data, 1):
+                cell = ws.cell(row=row_num, column=col_idx, value=value)
                 if i % 2 == 1:
-                    row_num = start_row + i
-                    ws.range(f"A{row_num}:X{row_num}").color = (240, 244, 255)
-            
-            wb.save()
-            wb.close()
-        finally:
-            app.quit() # Pastikan Excel-nya mati
-            
-        logging.info(f"File berhasil disimpan pake Excel Asli: {out_path}")
+                    cell.fill = zebra_fill
+                    
+        wb.save(out_path)
+        wb.close()
+        logging.info(f"File berhasil disimpan pake openpyxl: {out_path}")
         return out_path
     except Exception as e:
-        logging.error(f"Gagal ekspor pake xlwings: {e}")
+        logging.error(f"Gagal ekspor pake openpyxl: {e}")
         raise e
-    finally:
-        pythoncom.CoUninitialize()
 
 
 # ─── HANDLERS ─────────────────────────────────────────────────────────────────
